@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
+using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour
 {
@@ -21,10 +22,10 @@ public class PlayerController : MonoBehaviour
     public float mouseSensitivity = 100f;
     public float maxLookAngle = 80f;
 
-    [SerializeField]
-    private GameObject playerHPbar;
+    private GameObject playerHpBar;
 
-    int HPbarSize = 500;
+    private int HPbarSize = 500;
+    private Vector3 playerRespawn;
 
     private Camera playerCamera;
     private Rigidbody playerRigidbody;
@@ -32,8 +33,12 @@ public class PlayerController : MonoBehaviour
     private bool isGrounded;
     public float mouseX;
     public float mouseY;
+    private UnityEngine.UI.Image redPanel;
 
     private int bulletCount = 6;
+    private float bulletSpeed = 100f;
+
+    private float fadeDuration = 0.1f;
 
     void Start()
     {
@@ -46,6 +51,17 @@ public class PlayerController : MonoBehaviour
 
         // 마우스 커서 잠금
         UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+
+        // Hp바 찾기
+        playerHpBar = GameObject.Find("HP bar").gameObject;
+
+        //피격 색 Panel 찾기
+        GameObject panel = GameObject.Find("RedPanel").gameObject;
+        redPanel = panel.GetComponent<UnityEngine.UI.Image>();
+        Debug.Log(redPanel.name);
+
+        //리스폰 위치
+        playerRespawn = transform.position;
     }
 
     void Update()
@@ -173,9 +189,19 @@ public class PlayerController : MonoBehaviour
                 GameObject bullet = ObjectPooler.SharedInstance.GetPooledObject();
                 if (bullet != null)
                 {
+                    bullet.GetComponent<Bullet>().active = true;
+                    bullet.GetComponent<Bullet>().startPosition = playerCamera.transform.position + playerCamera.transform.forward.normalized;
                     bullet.SetActive(true); // activate it
                     //총알 생성 위치
-                    bullet.transform.position = FindObjectOfType<Camera>().transform.position + FindObjectOfType<Camera>().transform.forward.normalized;
+                    bullet.transform.position = playerCamera.transform.position + playerCamera.transform.forward.normalized;
+                    bullet.transform.rotation = Quaternion.LookRotation(playerCamera.transform.forward.normalized.normalized);
+
+                    // Rigidbody에 속도 주기
+                    Rigidbody rb = bullet.GetComponent<Rigidbody>();
+                    if (rb != null)
+                    {
+                        rb.velocity = playerCamera.transform.forward.normalized * bulletSpeed;
+                    }
                 }
                 //총알 개수 -1
                 bulletCount--;
@@ -197,18 +223,53 @@ public class PlayerController : MonoBehaviour
         //충돌 물체의 태그가 bullet일 경우
         if (collision.gameObject.CompareTag("bullet"))
         {
-            RectTransform rt = playerHPbar.GetComponent<RectTransform>();
+            RectTransform rt = playerHpBar.GetComponent<RectTransform>();
             Vector2 size = rt.sizeDelta;
+
+            //피격 효과
+            StartCoroutine(FadeInOut());
+
             //체력의 30% 깎음
-            size.x = size.x - (size.x * 0.3f);
-            //0 이하면 0으로 설정
+            size.x = size.x - (HPbarSize * 0.3f);
+
+            //0 이하면 사망, 초기화 후 리스폰
             if (size.x < 0)
             {
-                size.x = 0;
+                size.x = HPbarSize;
+                transform.position = playerRespawn;
             }
             rt.sizeDelta = size;
+            Debug.Log("맞음");
         }
     }
+
+    IEnumerator FadeInOut()
+    {
+        // 페이드 인 (투명 → 불투명)
+        yield return StartCoroutine(Fade(0f, 0.34f));
+        // 잠시 대기
+        yield return new WaitForSeconds(0.1f);    
+        // 페이드 아웃 (불투명 → 투명)
+        yield return StartCoroutine(Fade(0.34f, 0f));
+    }
+
+    IEnumerator Fade(float startAlpha, float endAlpha)
+    {
+        float time = 0f;
+        Color color = redPanel.color;
+
+        while (time < fadeDuration)
+        {
+            time += Time.deltaTime;
+            float alpha = Mathf.Lerp(startAlpha, endAlpha, time / fadeDuration);
+            redPanel.color = new Color(color.r, color.g, color.b, alpha);
+            yield return null;
+        }
+
+        // 최종 알파값 설정
+        redPanel.color = new Color(color.r, color.g, color.b, endAlpha);
+    }
+
 }
 
 
