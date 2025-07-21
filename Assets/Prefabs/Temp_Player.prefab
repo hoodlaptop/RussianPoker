@@ -16,7 +16,7 @@ GameObject:
   - component: {fileID: 5780654040998724377}
   m_Layer: 0
   m_Name: Temp_Player
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -155,6 +155,7 @@ MonoBehaviour:
   doubleJumpEnabled: 0
   mouseSensitivity: 100
   maxLookAngle: 80
+  playerHPbar: {fileID: 0}
   mouseX: 0
   mouseY: 0
 --- !u!1 &4961584263228198776

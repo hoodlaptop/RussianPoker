@@ -21,6 +21,11 @@ public class PlayerController : MonoBehaviour
     public float mouseSensitivity = 100f;
     public float maxLookAngle = 80f;
 
+    [SerializeField]
+    private GameObject playerHPbar;
+
+    int HPbarSize = 500;
+
     private Camera playerCamera;
     private Rigidbody playerRigidbody;
     private float xRotation = 0f;
@@ -184,6 +189,24 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKey(KeyCode.R))
         {
             bulletCount = 6;
+        }
+    }
+
+    private void OnCollisionEnter(Collision collision)
+    {
+        //충돌 물체의 태그가 bullet일 경우
+        if (collision.gameObject.CompareTag("bullet"))
+        {
+            RectTransform rt = playerHPbar.GetComponent<RectTransform>();
+            Vector2 size = rt.sizeDelta;
+            //체력의 30% 깎음
+            size.x = size.x - (size.x * 0.3f);
+            //0 이하면 0으로 설정
+            if (size.x < 0)
+            {
+                size.x = 0;
+            }
+            rt.sizeDelta = size;
         }
     }
 }
