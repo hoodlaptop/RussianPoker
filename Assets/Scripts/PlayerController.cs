@@ -22,12 +22,13 @@ public class PlayerController : MonoBehaviour
     public float mouseSensitivity = 100f;
     public float maxLookAngle = 80f;
 
+    private Camera playerCamera;
     private GameObject playerHpBar;
 
     private int HPbarSize = 500;
     private Vector3 playerRespawn;
 
-    private Camera playerCamera;
+    
     private Rigidbody playerRigidbody;
     private float xRotation = 0f;
     private bool isGrounded;
@@ -90,6 +91,7 @@ public class PlayerController : MonoBehaviour
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -maxLookAngle, maxLookAngle); // 시야각 제한
         playerCamera.transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+        
     }
 
     void HandleMovement()
