@@ -17,7 +17,7 @@ public class EnemySystem : MonoBehaviour
     public float airControlMultiplier = 0.3f; // 공중 제어력 비율
 
     [Header("Enemy Settings")]
-    private string identity = "enemy";
+    public string identity = "enemy";
     public float enemyHP = 10f;
     public Vector3 respawnSpot = new Vector3(10, 1, 0);
     public float detectionDistance = 20f; //레이감지 거리

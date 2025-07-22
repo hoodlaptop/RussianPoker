@@ -23,7 +23,7 @@ public class PlayerController : MonoBehaviour
     public float maxLookAngle = 80f;
 
     [Header("Player Settings")]
-    private string identity = "default";
+    public string identity = "default";
     public GameObject UI_HPBar;
     public RectTransform UI_HPBarGauge;
     public float playerHP = 10f;
