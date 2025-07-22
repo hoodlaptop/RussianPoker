@@ -22,6 +22,9 @@ public class PlayerController : MonoBehaviour
     public float mouseSensitivity = 100f;
     public float maxLookAngle = 80f;
 
+    [SerializeField]
+    private Camera deathCamera;
+
     private Camera playerCamera;
     private GameObject playerHpBar;
 
@@ -38,6 +41,7 @@ public class PlayerController : MonoBehaviour
     private GunManager gunManager;
 
     private float fadeDuration = 0.1f;
+    private bool isAlive = true;
 
     void Start()
     {
@@ -71,11 +75,14 @@ public class PlayerController : MonoBehaviour
     {
         // 땅에 닿아 있는지 레이캐스트로 확인
         isGrounded = Physics.Raycast(transform.position + Vector3.down * 1.0f, Vector3.down, 0.6f);
-
-        HandleMouseLook();
-        HandleMovement();
-        HandleJump();
-        HandleShoot();
+        //살아있다면
+        if (isAlive)
+        {
+            HandleMouseLook();
+            HandleMovement();
+            HandleJump();
+            HandleShoot();
+        }
     }
 
     void HandleMouseLook()
@@ -201,8 +208,8 @@ public class PlayerController : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        //충돌 물체의 태그가 bullet일 경우
-        if (collision.gameObject.CompareTag("bullet"))
+        //충돌 물체의 태그가 bullet이고 살아있을 경우
+        if (collision.gameObject.CompareTag("bullet") && isAlive)
         {
             RectTransform rt = playerHpBar.GetComponent<RectTransform>();
             Vector2 size = rt.sizeDelta;
@@ -213,17 +220,23 @@ public class PlayerController : MonoBehaviour
             //체력의 30% 깎음
             size.x = size.x - (HPbarSize * 0.3f);
 
-            //0 이하면 사망, 초기화 후 리스폰
+            //0 이하면 사망,카메라 전환, 5초 후 리스폰
             if (size.x < 0)
             {
-                size.x = HPbarSize;
-                transform.position = playerRespawn;
+                Death();
+                StartCoroutine(Respawn());
             }
             rt.sizeDelta = size;
             Debug.Log("맞음");
         }
     }
 
+    private void Death()
+    {
+        playerCamera.enabled = false;
+        deathCamera.enabled = true;
+        isAlive = false;
+    }
 
     IEnumerator FadeInOut()
     {
@@ -250,6 +263,20 @@ public class PlayerController : MonoBehaviour
 
         // 최종 알파값 설정
         redPanel.color = new Color(color.r, color.g, color.b, endAlpha);
+    }
+
+    IEnumerator Respawn()
+    {
+        //5초 후
+        yield return new WaitForSeconds(5.0f);
+        //리스폰
+        RectTransform rt = playerHpBar.GetComponent<RectTransform>();
+        Vector2 size = rt.sizeDelta;
+        deathCamera.enabled = false;
+        playerCamera.enabled = true;
+        size.x = HPbarSize;
+        transform.position = playerRespawn;
+        isAlive = true;
     }
 
 }
