@@ -9,8 +9,11 @@ public class GunManager : MonoBehaviour
     private List<GameObject> bulletImages = new List<GameObject>();
     [SerializeField]
     private GameObject gunNameObject;
+    [SerializeField]
+    private GameObject reloadingObject;
 
     private TextMeshProUGUI gunName;
+    private TextMeshProUGUI reloadingText;
     //총알 속도
     private float pistolBulletSpeed = 70;
     private float shotgunBulletSpeed = 60;
@@ -32,6 +35,9 @@ public class GunManager : MonoBehaviour
     private bool shotgunTerm = true;
     private bool SMGTerm = true;
 
+    //재장전 중
+    private bool reloading = false;
+
     private void Start()
     {
         gunName = gunNameObject.GetComponent<TextMeshProUGUI>();
@@ -39,83 +45,93 @@ public class GunManager : MonoBehaviour
         {
             bulletImages[i].SetActive(false);
         }
+        reloadingText = reloadingObject.GetComponent<TextMeshProUGUI>();
+        reloadingText.enabled = false;
     }
     private void Update()
     {
-        // 1 2 3 키 입력 감지해서 총 바꿈
-        if (Input.GetKeyDown(KeyCode.Alpha1))
+        // 재장전 중이 아닐 때
+        if (!reloading)
         {
-            gunNum = 1;
-            gunName.text = "Pistol";
-            //남아있는 bullet 수만큼 표시
-            for (int i = 0; i < pistolBullet; i++)
+            // 1 2 3 키 입력 감지해서 총 바꿈
+            if (Input.GetKeyDown(KeyCode.Alpha1))
             {
-                bulletImages[i].SetActive(true);
+                gunNum = 1;
+                gunName.text = "Pistol";
+                //남아있는 bullet 수만큼 표시
+                for (int i = 0; i < pistolBullet; i++)
+                {
+                    bulletImages[i].SetActive(true);
+                }
+                for (int i = pistolBullet; i < bulletImages.Count; i++)
+                {
+                    bulletImages[i].SetActive(false);
+                }
             }
-            for (int i = pistolBullet; i < bulletImages.Count; i++)
+            if (Input.GetKeyDown(KeyCode.Alpha2))
             {
-                bulletImages[i].SetActive(false);
+                gunNum = 2;
+                gunName.text = "Shotgun";
+                //남아있는 bullet 수만큼 표시
+                for (int i = 0; i < shotgunBullet; i++)
+                {
+                    bulletImages[i].SetActive(true);
+                }
+                for (int i = shotgunBullet; i < bulletImages.Count; i++)
+                {
+                    bulletImages[i].SetActive(false);
+                }
             }
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            gunNum = 2;
-            gunName.text = "Shotgun";
-            //남아있는 bullet 수만큼 표시
-            for (int i = 0; i < shotgunBullet; i++)
+            if (Input.GetKey(KeyCode.Alpha3))
             {
-                bulletImages[i].SetActive(true);
+                gunNum = 3;
+                gunName.text = "SMG";
+                //남아있는 bullet 수만큼 표시
+                for (int i = 0; i < SMGBullet; i++)
+                {
+                    bulletImages[i].SetActive(true);
+                }
+                for (int i = SMGBullet; i < bulletImages.Count; i++)
+                {
+                    bulletImages[i].SetActive(false);
+                }
             }
-            for (int i = shotgunBullet; i < bulletImages.Count; i++)
-            {
-                bulletImages[i].SetActive(false);
-            }
-        }
-        if (Input.GetKey(KeyCode.Alpha3))
-        {
-            gunNum = 3;
-            gunName.text = "SMG";
-            //남아있는 bullet 수만큼 표시
-            for (int i = 0; i < SMGBullet; i++)
-            {
-                bulletImages[i].SetActive(true);
-            }
-            for (int i = SMGBullet; i < bulletImages.Count; i++)
-            {
-                bulletImages[i].SetActive(false);
-            }
-        }
 
-        //R이 눌렸을때 선택된 총 재장전
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            HandleReload();
+            //R이 눌렸을때 선택된 총 재장전
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                HandleReload();
+            }
         }
     }
 
     public void Shot(Vector3 startPosition, Vector3 rotate)
     {
-        //쿨타임 돌아왔을때만 호출
-        switch (gunNum)
+        // 재장전 중이 아닐 때
+        if (!reloading)
         {
-            case 1:
-                if (pistolTerm)
-                {
-                    PistolShot(startPosition, rotate);
-                }
-                break;
-            case 2:
-                if (shotgunTerm)
-                {
-                    ShotgunShot(startPosition, rotate);
-                }
-                break;
-            case 3:
-                if (SMGTerm)
-                {
-                    SMGShot(startPosition, rotate);
-                }
-                break;
+            //쿨타임 돌아왔을때만 호출
+            switch (gunNum)
+            {
+                case 1:
+                    if (pistolTerm)
+                    {
+                        PistolShot(startPosition, rotate);
+                    }
+                    break;
+                case 2:
+                    if (shotgunTerm)
+                    {
+                        ShotgunShot(startPosition, rotate);
+                    }
+                    break;
+                case 3:
+                    if (SMGTerm)
+                    {
+                        SMGShot(startPosition, rotate);
+                    }
+                    break;
+            }
         }
     }
 
@@ -258,43 +274,13 @@ public class GunManager : MonoBehaviour
         switch (gunNum)
         {
             case 1:
-                pistolBullet = 6;
-
-                //남아있는 bullet 수만큼 표시
-                for (int i = 0; i < pistolBullet; i++)
-                {
-                    bulletImages[i].SetActive(true);
-                }
-                for (int i = pistolBullet; i < bulletImages.Count; i++)
-                {
-                    bulletImages[i].SetActive(false);
-                }
+                StartCoroutine(PistolReload());
                 break;
             case 2:
-                shotgunBullet = 6;
-
-                //남아있는 bullet 수만큼 표시
-                for (int i = 0; i < shotgunBullet; i++)
-                {
-                    bulletImages[i].SetActive(true);
-                }
-                for (int i = shotgunBullet; i < bulletImages.Count; i++)
-                {
-                    bulletImages[i].SetActive(false);
-                }
+                StartCoroutine(ShotgunReload());
                 break;
             case 3:
-                SMGBullet = 30;
-
-                //남아있는 bullet 수만큼 표시
-                for (int i = 0; i < SMGBullet; i++)
-                {
-                    bulletImages[i].SetActive(true);
-                }
-                for (int i = SMGBullet; i < bulletImages.Count; i++)
-                {
-                    bulletImages[i].SetActive(false);
-                }
+                StartCoroutine(SMGReload());
                 break;
         }
     }
@@ -318,4 +304,72 @@ public class GunManager : MonoBehaviour
         SMGTerm = true;
     }
 
+    IEnumerator PistolReload()
+    {
+        reloading = true;
+        reloadingText.enabled = true;
+        //재장전 시간
+        yield return new WaitForSeconds(1f);
+
+        pistolBullet = 6;
+
+        //남아있는 bullet 수만큼 표시
+        for (int i = 0; i < pistolBullet; i++)
+        {
+            bulletImages[i].SetActive(true);
+        }
+        for (int i = pistolBullet; i < bulletImages.Count; i++)
+        {
+            bulletImages[i].SetActive(false);
+        }
+
+        reloadingText.enabled = false;
+        reloading = false;
+    }
+
+    IEnumerator ShotgunReload()
+    {
+        reloading = true;
+        reloadingText.enabled = true;
+        //재장전 시간
+        yield return new WaitForSeconds(1f);
+
+        shotgunBullet = 6;
+
+        //남아있는 bullet 수만큼 표시
+        for (int i = 0; i < shotgunBullet; i++)
+        {
+            bulletImages[i].SetActive(true);
+        }
+        for (int i = shotgunBullet; i < bulletImages.Count; i++)
+        {
+            bulletImages[i].SetActive(false);
+        }
+
+        reloadingText.enabled = false;
+        reloading = false;
+    }
+
+    IEnumerator SMGReload()
+    {
+        reloading = true;
+        reloadingText.enabled = true;
+        //재장전 시간
+        yield return new WaitForSeconds(1f);
+
+        SMGBullet = 30;
+
+        //남아있는 bullet 수만큼 표시
+        for (int i = 0; i < SMGBullet; i++)
+        {
+            bulletImages[i].SetActive(true);
+        }
+        for (int i = SMGBullet; i < bulletImages.Count; i++)
+        {
+            bulletImages[i].SetActive(false);
+        }
+
+        reloadingText.enabled = false;
+        reloading = false;
+    }
 }

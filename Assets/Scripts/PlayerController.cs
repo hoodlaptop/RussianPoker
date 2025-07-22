@@ -22,18 +22,31 @@ public class PlayerController : MonoBehaviour
     public float mouseSensitivity = 100f;
     public float maxLookAngle = 80f;
 
+    [Header("Player Settings")]
+    public GameObject UI_HPBar;
+    public RectTransform UI_HPBarGauge;
+    public GameObject HPBar;
+    public RectTransform HPBarGauge;
+    public float playerHP = 10f;
+    public Vector3 respawnSpot = new Vector3(0, 1, 0);
+
+    [Header("Extra")]
+
     [SerializeField]
     private Camera deathCamera;
 
     private Camera playerCamera;
     private GameObject playerHpBar;
+    private GameObject[] HPBars;
 
-    private int HPbarSize = 500;
-    private Vector3 playerRespawn;
+    private Vector2 UI_HPBarSize;
+    private Vector2 HPBarSize;
+    private float currentHP;
 
     
     private Rigidbody playerRigidbody;
     private float xRotation = 0f;
+    [SerializeField]
     private bool isGrounded;
     public float mouseX;
     public float mouseY;
@@ -55,8 +68,11 @@ public class PlayerController : MonoBehaviour
         // 마우스 커서 잠금
         UnityEngine.Cursor.lockState = CursorLockMode.Locked;
 
-        // Hp바 찾기
-        playerHpBar = GameObject.Find("HP bar").gameObject;
+        // playerHp바 찾기
+        playerHpBar = GameObject.Find("UI_HP bar Fill").gameObject;
+
+        // 상대 HP바 전부 찾기
+        FindHPBars();
 
         //피격 색 Panel 찾기
         GameObject panel = GameObject.Find("RedPanel").gameObject;
@@ -67,14 +83,18 @@ public class PlayerController : MonoBehaviour
         GameObject manager = GameObject.Find("GunManager");
         gunManager = manager.GetComponent<GunManager>();
 
-        //리스폰 위치
-        playerRespawn = transform.position;
+        //HP설정
+        currentHP = playerHP;
+        UI_HPBarSize = UI_HPBarGauge.sizeDelta;
+        HPBarSize = HPBarGauge.sizeDelta;
     }
 
     void Update()
     {
-        // 땅에 닿아 있는지 레이캐스트로 확인
-        isGrounded = Physics.Raycast(transform.position + Vector3.down * 1.0f, Vector3.down, 0.6f);
+        // 땅에 닿아 있는지 레이캐스트로 확인 -> Collision 충돌과 Exit으로 확인
+        //isGrounded = Physics.Raycast(transform.position + Vector3.down * 1.0f, Vector3.down, 0.6f);
+
+
         //살아있다면
         if (isAlive)
         {
@@ -83,6 +103,8 @@ public class PlayerController : MonoBehaviour
             HandleJump();
             HandleShoot();
         }
+
+        RotateHPBar();
     }
 
     void HandleMouseLook()
@@ -116,6 +138,7 @@ public class PlayerController : MonoBehaviour
             // 땅에서는 즉시 반응
             Vector3 targetVelocity = moveInput * walkSpeed;
             playerRigidbody.velocity = new Vector3(targetVelocity.x, playerRigidbody.velocity.y, targetVelocity.z);
+            Debug.Log(playerRigidbody.velocity.ToString());
 
             // 입력이 없으면 마찰력으로 빠르게 감속
             if (moveInput.magnitude == 0)
@@ -206,28 +229,60 @@ public class PlayerController : MonoBehaviour
 
     }
 
+    private void RotateHPBar()
+    {
+        foreach (GameObject bar in HPBars)
+        {
+            bar.transform.forward = playerCamera.transform.forward;
+        }
+    }
+
     private void OnCollisionEnter(Collision collision)
     {
+        //충돌 물체의 태그가 Ground일 경우
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            isGrounded = true;
+        }
+
         //충돌 물체의 태그가 bullet이고 살아있을 경우
         if (collision.gameObject.CompareTag("bullet") && isAlive)
         {
-            RectTransform rt = playerHpBar.GetComponent<RectTransform>();
-            Vector2 size = rt.sizeDelta;
-
             //피격 효과
             StartCoroutine(FadeInOut());
 
-            //체력의 30% 깎음
-            size.x = size.x - (HPbarSize * 0.3f);
+            //데미지
+            currentHP -= 2f;
+
+            //UI_HP바 크기 조절
+            Vector2 size = UI_HPBarGauge.sizeDelta;
+            size.x = UI_HPBarSize.x * (currentHP / playerHP); // HP 감소한 비율로 이미지 크기 감소
+            UI_HPBarGauge.sizeDelta = size; //적용
+
+            //HP바 크기 조절
+            size = HPBarGauge.sizeDelta;
+            size.x = HPBarSize.x * (currentHP / playerHP); // HP 감소한 비율로 이미지 크기 감소
+            HPBarGauge.sizeDelta = size; //적용
+
+            Debug.Log((currentHP / playerHP).ToString());
 
             //0 이하면 사망,카메라 전환, 5초 후 리스폰
-            if (size.x < 0)
+            if (currentHP <= 0)
             {
                 Death();
                 StartCoroutine(Respawn());
             }
-            rt.sizeDelta = size;
+
             Debug.Log("맞음");
+        }
+    }
+
+    private void OnCollisionExit(Collision collision)
+    {
+        //떨어지는 물체의 태그가 Ground일 경우
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            isGrounded = false;
         }
     }
 
@@ -236,6 +291,11 @@ public class PlayerController : MonoBehaviour
         playerCamera.enabled = false;
         deathCamera.enabled = true;
         isAlive = false;
+    }
+
+    private void FindHPBars()
+    {
+        HPBars = GameObject.FindGameObjectsWithTag("HPBar");
     }
 
     IEnumerator FadeInOut()
@@ -269,13 +329,19 @@ public class PlayerController : MonoBehaviour
     {
         //5초 후
         yield return new WaitForSeconds(5.0f);
+
+        //체력 초기화
+        //UI_HP바 크기 초기화
+        Vector2 size = UI_HPBarSize;
+        UI_HPBarGauge.sizeDelta = size; //적용
+        //HP바 크기 초기화
+        size = HPBarSize;
+        HPBarGauge.sizeDelta = size; //적용
+
         //리스폰
-        RectTransform rt = playerHpBar.GetComponent<RectTransform>();
-        Vector2 size = rt.sizeDelta;
         deathCamera.enabled = false;
         playerCamera.enabled = true;
-        size.x = HPbarSize;
-        transform.position = playerRespawn;
+        transform.position = respawnSpot;
         isAlive = true;
     }
 

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using UnityEngine;
 using static UnityEngine.GraphicsBuffer;
 
@@ -12,10 +13,19 @@ public class EnemySystem : MonoBehaviour
     [Header("Air Movement")]
     public float airControlMultiplier = 0.3f; // 공중 제어력 비율
 
+    [Header("Enemy Settings")]
+    public GameObject HPBar;
+    public RectTransform HPBarGauge;
+    public float enemyHP = 10f;
+    public Vector3 respawnSpot = new Vector3(10, 1, 0);
+    public float detectionDistance = 20f; //레이감지 거리
+
+    private Vector2 HPBarSize;
+    private float currentEnemyHP;
+
     private PlayerController player;
     private Rigidbody rb;
 
-    public float detectionDistance = 20f; //레이감지 거리
     private bool isGrounded;
     private bool shootTerm = true;
     private float bulletSpeed = 100f;
@@ -23,6 +33,8 @@ public class EnemySystem : MonoBehaviour
     {
         player = FindObjectOfType<PlayerController>();
         rb = GetComponent<Rigidbody>();
+        currentEnemyHP = enemyHP;
+        HPBarSize = HPBarGauge.sizeDelta;
     }
 
 
@@ -149,6 +161,54 @@ public class EnemySystem : MonoBehaviour
         Debug.DrawRay(rayPosition, rayDirection * detectionDistance, Color.red);
     }
 
+    private void OnCollisionEnter(Collision collision)
+    {
+        //충돌 물체의 태그가 bullet일 경우
+        if (collision.gameObject.CompareTag("bullet"))
+        {
+            //데미지
+            currentEnemyHP -= 2f;
+
+            //HP바 크기 조절
+            Vector2 size = HPBarGauge.sizeDelta;
+            Debug.Log((currentEnemyHP / enemyHP).ToString());
+            size.x = HPBarSize.x * (currentEnemyHP / enemyHP); // HP 감소한 비율로 이미지 크기 감소
+            HPBarGauge.sizeDelta = size; //적용
+
+            //0 이하면 사망처리, 리스폰
+            if (currentEnemyHP <= 0)
+            {
+                Death();
+                StartCoroutine(Respawn());
+            }
+        }
+    }
+
+    private void Death()
+    {
+        //캐릭터 보이지 않게하기
+        GetComponent<MeshRenderer>().enabled = false;
+        GetComponent<CapsuleCollider>().enabled = false;
+        HPBar.SetActive(false);
+    }
+
+    IEnumerator Respawn()
+    {
+        //3초 후
+        yield return new WaitForSeconds(3f);
+
+        //HP 초기화
+        currentEnemyHP = enemyHP;
+        HPBarGauge.sizeDelta = HPBarSize;
+
+        //리스폰 장소로 이동
+        transform.position = respawnSpot;
+
+        //보이게 하기
+        HPBar.SetActive(true);
+        GetComponent<MeshRenderer>().enabled = true;
+        GetComponent<CapsuleCollider>().enabled = true;
+    }
 
     IEnumerator Timer(float duration)
     {

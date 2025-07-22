@@ -5,12 +5,12 @@ using UnityEngine;
 
 public class Bullet : MonoBehaviour
 {
-    [SerializeField]
     private Rigidbody rb;
     private PlayerController playerController;
     private Camera camera;
 
-
+    public string name = "";
+    public int gunNum = 1;
     public Vector3 startPosition;
     public bool active = false;
 
