@@ -23,10 +23,9 @@ public class PlayerController : MonoBehaviour
     public float maxLookAngle = 80f;
 
     [Header("Player Settings")]
+    private string identity = "default";
     public GameObject UI_HPBar;
     public RectTransform UI_HPBarGauge;
-    public GameObject HPBar;
-    public RectTransform HPBarGauge;
     public float playerHP = 10f;
     public Vector3 respawnSpot = new Vector3(0, 1, 0);
 
@@ -36,11 +35,8 @@ public class PlayerController : MonoBehaviour
     private Camera deathCamera;
 
     private Camera playerCamera;
-    private GameObject playerHpBar;
-    private GameObject[] HPBars;
 
     private Vector2 UI_HPBarSize;
-    private Vector2 HPBarSize;
     private float currentHP;
 
     
@@ -68,25 +64,17 @@ public class PlayerController : MonoBehaviour
         // 마우스 커서 잠금
         UnityEngine.Cursor.lockState = CursorLockMode.Locked;
 
-        // playerHp바 찾기
-        playerHpBar = GameObject.Find("UI_HP bar Fill").gameObject;
-
-        // 상대 HP바 전부 찾기
-        FindHPBars();
-
         //피격 색 Panel 찾기
         GameObject panel = GameObject.Find("RedPanel").gameObject;
         redPanel = panel.GetComponent<UnityEngine.UI.Image>();
-        Debug.Log(redPanel.name);
 
         // GunManager 찾기
         GameObject manager = GameObject.Find("GunManager");
         gunManager = manager.GetComponent<GunManager>();
 
         //HP설정
-        currentHP = playerHP;
         UI_HPBarSize = UI_HPBarGauge.sizeDelta;
-        HPBarSize = HPBarGauge.sizeDelta;
+        currentHP = playerHP;
     }
 
     void Update()
@@ -104,7 +92,6 @@ public class PlayerController : MonoBehaviour
             HandleShoot();
         }
 
-        RotateHPBar();
     }
 
     void HandleMouseLook()
@@ -138,7 +125,6 @@ public class PlayerController : MonoBehaviour
             // 땅에서는 즉시 반응
             Vector3 targetVelocity = moveInput * walkSpeed;
             playerRigidbody.velocity = new Vector3(targetVelocity.x, playerRigidbody.velocity.y, targetVelocity.z);
-            Debug.Log(playerRigidbody.velocity.ToString());
 
             // 입력이 없으면 마찰력으로 빠르게 감속
             if (moveInput.magnitude == 0)
@@ -216,25 +202,17 @@ public class PlayerController : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
 
-            gunManager.Shot(playerCamera.transform.position, playerCamera.transform.forward.normalized);
+            gunManager.Shot(playerCamera.transform.position, playerCamera.transform.forward.normalized, identity);
             
         }
         //마우스를 계속 누르고있는데 선택된 총이 SMG라면 Shot 호출
         if (Input.GetMouseButton(0) && gunManager.gunNum == 3)
         {
 
-            gunManager.Shot(playerCamera.transform.position, playerCamera.transform.forward.normalized);
+            gunManager.Shot(playerCamera.transform.position, playerCamera.transform.forward.normalized, identity);
 
         }
 
-    }
-
-    private void RotateHPBar()
-    {
-        foreach (GameObject bar in HPBars)
-        {
-            bar.transform.forward = playerCamera.transform.forward;
-        }
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -248,32 +226,50 @@ public class PlayerController : MonoBehaviour
         //충돌 물체의 태그가 bullet이고 살아있을 경우
         if (collision.gameObject.CompareTag("bullet") && isAlive)
         {
-            //피격 효과
-            StartCoroutine(FadeInOut());
-
-            //데미지
-            currentHP -= 2f;
-
-            //UI_HP바 크기 조절
-            Vector2 size = UI_HPBarGauge.sizeDelta;
-            size.x = UI_HPBarSize.x * (currentHP / playerHP); // HP 감소한 비율로 이미지 크기 감소
-            UI_HPBarGauge.sizeDelta = size; //적용
-
-            //HP바 크기 조절
-            size = HPBarGauge.sizeDelta;
-            size.x = HPBarSize.x * (currentHP / playerHP); // HP 감소한 비율로 이미지 크기 감소
-            HPBarGauge.sizeDelta = size; //적용
-
-            Debug.Log((currentHP / playerHP).ToString());
-
-            //0 이하면 사망,카메라 전환, 5초 후 리스폰
-            if (currentHP <= 0)
+            //identity가 다르다면
+            if (collision.gameObject.GetComponent<Bullet>().identity != identity)
             {
-                Death();
-                StartCoroutine(Respawn());
-            }
+                //피격 효과
+                StartCoroutine(FadeInOut());
 
-            Debug.Log("맞음");
+                //데미지
+                //충돌한 object의 layer 찾기 (Head or Body)
+                GameObject hitObject = null;
+                foreach (ContactPoint contact in collision.contacts)
+                {
+                    hitObject = contact.thisCollider.gameObject;
+                }
+                Debug.Log(LayerMask.LayerToName(hitObject.layer));
+                // Head / Body 여부에 따라 데미지 가져와서 감소
+                switch (LayerMask.LayerToName(hitObject.layer))
+                {
+                    case "Head":
+                        currentHP -= collision.gameObject.GetComponent<Bullet>().HeadDamage();
+                        break;
+
+                    case "Body":
+                        currentHP -= collision.gameObject.GetComponent<Bullet>().BodyDamage();
+                        break;
+
+                    default:
+
+                        break;
+                }
+
+                //UI_HP바 크기 조절
+                Vector2 size = UI_HPBarGauge.sizeDelta;
+                size.x = UI_HPBarSize.x * (currentHP / playerHP); // HP 감소한 비율로 이미지 크기 감소
+                UI_HPBarGauge.sizeDelta = size; //적용
+
+                //0 이하면 사망,카메라 전환, 5초 후 리스폰
+                if (currentHP <= 0)
+                {
+                    Death();
+                    StartCoroutine(Respawn());
+                }
+
+                Debug.Log("맞음");
+            }
         }
     }
 
@@ -293,10 +289,6 @@ public class PlayerController : MonoBehaviour
         isAlive = false;
     }
 
-    private void FindHPBars()
-    {
-        HPBars = GameObject.FindGameObjectsWithTag("HPBar");
-    }
 
     IEnumerator FadeInOut()
     {
@@ -331,12 +323,10 @@ public class PlayerController : MonoBehaviour
         yield return new WaitForSeconds(5.0f);
 
         //체력 초기화
+        currentHP = playerHP;
         //UI_HP바 크기 초기화
         Vector2 size = UI_HPBarSize;
         UI_HPBarGauge.sizeDelta = size; //적용
-        //HP바 크기 초기화
-        size = HPBarSize;
-        HPBarGauge.sizeDelta = size; //적용
 
         //리스폰
         deathCamera.enabled = false;

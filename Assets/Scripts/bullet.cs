@@ -5,21 +5,19 @@ using UnityEngine;
 
 public class Bullet : MonoBehaviour
 {
-    private Rigidbody rb;
-    private PlayerController playerController;
-    private Camera camera;
+    [Header("Damage")]
+    public float pistolDamage_Head = 2f;
+    public float pistolDamage_Body = 1f;
+    public float shotgunDamage_Head = 0.6f;
+    public float shotgunDamage_Body = 0.3f;
+    public float SMGDamage_Head = 2f;
+    public float SMGDamage_Body = 1f;
 
-    public string name = "";
+    [Header("Bullet Settings")]
+    public string identity = "default";
     public int gunNum = 1;
     public Vector3 startPosition;
     public bool active = false;
-
-    private void Start()
-    {
-        rb = gameObject.GetComponent<Rigidbody>();
-        playerController = FindObjectOfType<PlayerController>();
-        camera = FindObjectOfType<Camera>();
-    }
 
     private void Update()
     {
@@ -32,6 +30,36 @@ public class Bullet : MonoBehaviour
                 active = false;
                 gameObject.SetActive(false);
             }
+        }
+    }
+
+    public float HeadDamage()
+    {
+        switch(gunNum)
+        {
+            case 1:
+                return pistolDamage_Head;
+            case 2:
+                return shotgunDamage_Head;
+            case 3:
+                return SMGDamage_Head;
+            default:
+                return 0f;
+        }
+    }
+
+    public float BodyDamage()
+    {
+        switch (gunNum)
+        {
+            case 1:
+                return pistolDamage_Body;
+            case 2:
+                return shotgunDamage_Body;
+            case 3:
+                return SMGDamage_Body;
+            default:
+                return 0f;
         }
     }
 

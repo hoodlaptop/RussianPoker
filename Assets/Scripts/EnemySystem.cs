@@ -6,6 +6,9 @@ using static UnityEngine.GraphicsBuffer;
 
 public class EnemySystem : MonoBehaviour
 {
+    [SerializeField]
+    private GameObject head;
+
     [Header("Movement Settings")]
     public float walkSpeed = 0.0005f;
     public float rotationSpeed = 5f; //회전스피드
@@ -14,13 +17,11 @@ public class EnemySystem : MonoBehaviour
     public float airControlMultiplier = 0.3f; // 공중 제어력 비율
 
     [Header("Enemy Settings")]
-    public GameObject HPBar;
-    public RectTransform HPBarGauge;
+    private string identity = "enemy";
     public float enemyHP = 10f;
     public Vector3 respawnSpot = new Vector3(10, 1, 0);
     public float detectionDistance = 20f; //레이감지 거리
 
-    private Vector2 HPBarSize;
     private float currentEnemyHP;
 
     private PlayerController player;
@@ -34,15 +35,11 @@ public class EnemySystem : MonoBehaviour
         player = FindObjectOfType<PlayerController>();
         rb = GetComponent<Rigidbody>();
         currentEnemyHP = enemyHP;
-        HPBarSize = HPBarGauge.sizeDelta;
     }
 
 
     void Update()
     {
-
-        // 땅에 닿아 있는지 레이캐스트로 확인
-        isGrounded = Physics.Raycast(transform.position + Vector3.down * 1.0f, Vector3.down, 0.6f);
 
         HandleMovement();
         TargetPlayer();
@@ -134,6 +131,11 @@ public class EnemySystem : MonoBehaviour
                     if (bullet != null)
                     {
                         bullet.GetComponent<Bullet>().active = true;
+
+                        // bullet 정보 설정
+                        bullet.GetComponent<Bullet>().identity = identity;
+                        bullet.GetComponent<Bullet>().gunNum = 1; // pistol
+
                         bullet.GetComponent<Bullet>().startPosition = rayPosition + rayDirection;
                         bullet.SetActive(true); // activate it
                         //총알 생성 위치
@@ -163,24 +165,59 @@ public class EnemySystem : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
+        //충돌 물체의 태그가 Ground일 경우
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            isGrounded = true;
+        }
+
         //충돌 물체의 태그가 bullet일 경우
         if (collision.gameObject.CompareTag("bullet"))
         {
-            //데미지
-            currentEnemyHP -= 2f;
-
-            //HP바 크기 조절
-            Vector2 size = HPBarGauge.sizeDelta;
-            Debug.Log((currentEnemyHP / enemyHP).ToString());
-            size.x = HPBarSize.x * (currentEnemyHP / enemyHP); // HP 감소한 비율로 이미지 크기 감소
-            HPBarGauge.sizeDelta = size; //적용
-
-            //0 이하면 사망처리, 리스폰
-            if (currentEnemyHP <= 0)
+            //identity가 다르다면
+            if (collision.gameObject.GetComponent<Bullet>().identity != identity)
             {
-                Death();
-                StartCoroutine(Respawn());
+                //데미지
+                //충돌한 object의 layer 찾기 (Head or Body)
+                GameObject hitObject = null;
+                foreach (ContactPoint contact in collision.contacts)
+                {
+                    hitObject = contact.thisCollider.gameObject;
+                }
+                // Head / Body 여부에 따라 데미지 가져와서 감소
+                switch (LayerMask.LayerToName(hitObject.layer))
+                {
+                    case "Head":
+                        currentEnemyHP -= collision.gameObject.GetComponent<Bullet>().HeadDamage();
+                        Debug.Log("머리" + collision.gameObject.GetComponent<Bullet>().HeadDamage().ToString());
+                        break;
+
+                    case "Body":
+                        currentEnemyHP -= collision.gameObject.GetComponent<Bullet>().BodyDamage();
+                        Debug.Log("몸" + collision.gameObject.GetComponent<Bullet>().BodyDamage().ToString());
+                        break;
+
+                    default:
+
+                        break;
+                }
+
+
+                //0 이하면 사망처리, 리스폰
+                if (currentEnemyHP <= 0)
+                {
+                    Death();
+                    StartCoroutine(Respawn());
+                }
             }
+        }
+    }
+    private void OnCollisionExit(Collision collision)
+    {
+        //떨어지는 물체의 태그가 Ground일 경우
+        if (collision.gameObject.CompareTag("Ground"))
+        {
+            isGrounded = false;
         }
     }
 
@@ -189,8 +226,10 @@ public class EnemySystem : MonoBehaviour
         //캐릭터 보이지 않게하기
         GetComponent<MeshRenderer>().enabled = false;
         GetComponent<CapsuleCollider>().enabled = false;
-        HPBar.SetActive(false);
+        head.GetComponent<MeshRenderer>().enabled = false;
+        head.GetComponent<SphereCollider>().enabled = false;
     }
+
 
     IEnumerator Respawn()
     {
@@ -199,15 +238,15 @@ public class EnemySystem : MonoBehaviour
 
         //HP 초기화
         currentEnemyHP = enemyHP;
-        HPBarGauge.sizeDelta = HPBarSize;
 
         //리스폰 장소로 이동
         transform.position = respawnSpot;
 
         //보이게 하기
-        HPBar.SetActive(true);
         GetComponent<MeshRenderer>().enabled = true;
         GetComponent<CapsuleCollider>().enabled = true;
+        head.GetComponent<MeshRenderer>().enabled = true;
+        head.GetComponent<SphereCollider>().enabled = true;
     }
 
     IEnumerator Timer(float duration)

@@ -105,7 +105,7 @@ public class GunManager : MonoBehaviour
         }
     }
 
-    public void Shot(Vector3 startPosition, Vector3 rotate)
+    public void Shot(Vector3 startPosition, Vector3 rotate, string identity)
     {
         // 재장전 중이 아닐 때
         if (!reloading)
@@ -116,26 +116,26 @@ public class GunManager : MonoBehaviour
                 case 1:
                     if (pistolTerm)
                     {
-                        PistolShot(startPosition, rotate);
+                        PistolShot(startPosition, rotate, identity);
                     }
                     break;
                 case 2:
                     if (shotgunTerm)
                     {
-                        ShotgunShot(startPosition, rotate);
+                        ShotgunShot(startPosition, rotate, identity);
                     }
                     break;
                 case 3:
                     if (SMGTerm)
                     {
-                        SMGShot(startPosition, rotate);
+                        SMGShot(startPosition, rotate, identity);
                     }
                     break;
             }
         }
     }
 
-    private void PistolShot(Vector3 startPosition, Vector3 rotate)
+    private void PistolShot(Vector3 startPosition, Vector3 rotate, string identity)
     {
         //총알이 남아있다면
         if (pistolBullet > 0)
@@ -144,7 +144,10 @@ public class GunManager : MonoBehaviour
             GameObject bullet = ObjectPooler.SharedInstance.GetPooledObject();
             if (bullet != null)
             {
-                bullet.GetComponent<Bullet>().active = true;
+                Bullet B = bullet.GetComponent<Bullet>();
+                B.active = true;
+                B.identity = identity;
+                B.gunNum = 1;
                 bullet.GetComponent<Bullet>().startPosition = startPosition + rotate;
                 bullet.SetActive(true); // activate it
                 //총알 생성 위치
@@ -177,7 +180,7 @@ public class GunManager : MonoBehaviour
         }
     }
 
-    private void ShotgunShot(Vector3 startPosition, Vector3 rotate)
+    private void ShotgunShot(Vector3 startPosition, Vector3 rotate, string identity)
     {
         //총알이 남아있다면
         if (shotgunBullet > 0)
@@ -193,7 +196,10 @@ public class GunManager : MonoBehaviour
                         Random.Range(-spreadAngle, spreadAngle),
                         0f) * rotate;
 
-                    bullet.GetComponent<Bullet>().active = true;
+                    Bullet B = bullet.GetComponent<Bullet>();
+                    B.active = true;
+                    B.identity = identity;
+                    B.gunNum = 2;
                     bullet.GetComponent<Bullet>().startPosition = startPosition + spread;
                     bullet.SetActive(true);
                     bullet.transform.position = startPosition + spread;
@@ -226,7 +232,7 @@ public class GunManager : MonoBehaviour
         }
     }
 
-    private void SMGShot(Vector3 startPosition, Vector3 rotate)
+    private void SMGShot(Vector3 startPosition, Vector3 rotate, string identity)
     {
         //총알이 남아있다면
         if (SMGBullet > 0)
@@ -235,7 +241,10 @@ public class GunManager : MonoBehaviour
             GameObject bullet = ObjectPooler.SharedInstance.GetPooledObject();
             if (bullet != null)
             {
-                bullet.GetComponent<Bullet>().active = true;
+                Bullet B = bullet.GetComponent<Bullet>();
+                B.active = true;
+                B.identity = identity;
+                B.gunNum = 3;
                 bullet.GetComponent<Bullet>().startPosition = startPosition + rotate;
                 bullet.SetActive(true); // activate it
                 //총알 생성 위치
