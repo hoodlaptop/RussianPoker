@@ -34,9 +34,7 @@ public class PlayerController : MonoBehaviour
     public float mouseX;
     public float mouseY;
     private UnityEngine.UI.Image redPanel;
-
-    private int bulletCount = 6;
-    private float bulletSpeed = 100f;
+    private GunManager gunManager;
 
     private float fadeDuration = 0.1f;
 
@@ -60,6 +58,10 @@ public class PlayerController : MonoBehaviour
         redPanel = panel.GetComponent<UnityEngine.UI.Image>();
         Debug.Log(redPanel.name);
 
+        // GunManager 찾기
+        GameObject manager = GameObject.Find("GunManager");
+        gunManager = manager.GetComponent<GunManager>();
+
         //리스폰 위치
         playerRespawn = transform.position;
     }
@@ -73,7 +75,6 @@ public class PlayerController : MonoBehaviour
         HandleMovement();
         HandleJump();
         HandleShoot();
-        HandleReload();
     }
 
     void HandleMouseLook()
@@ -182,40 +183,18 @@ public class PlayerController : MonoBehaviour
         //마우스 왼쪽 버튼이 눌렸을때
         if (Input.GetMouseButtonDown(0))
         {
-            //총알이 남아있다면
-            if (bulletCount > 0)
-            {
-                //총알 오브젝트풀링
-                GameObject bullet = ObjectPooler.SharedInstance.GetPooledObject();
-                if (bullet != null)
-                {
-                    bullet.GetComponent<Bullet>().active = true;
-                    bullet.GetComponent<Bullet>().startPosition = playerCamera.transform.position + playerCamera.transform.forward.normalized;
-                    bullet.SetActive(true); // activate it
-                    //총알 생성 위치
-                    bullet.transform.position = playerCamera.transform.position + playerCamera.transform.forward.normalized;
-                    bullet.transform.rotation = Quaternion.LookRotation(playerCamera.transform.forward.normalized.normalized);
 
-                    // Rigidbody에 속도 주기
-                    Rigidbody rb = bullet.GetComponent<Rigidbody>();
-                    if (rb != null)
-                    {
-                        rb.velocity = playerCamera.transform.forward.normalized * bulletSpeed;
-                    }
-                }
-                //총알 개수 -1
-                bulletCount--;
-            }
+            gunManager.Shot(playerCamera.transform.position, playerCamera.transform.forward.normalized);
+            
         }
-    }
-
-    void HandleReload()
-    {
-        //R을 눌렀을 때 총알 개수 6개로 초기화
-        if (Input.GetKey(KeyCode.R))
+        //마우스를 계속 누르고있는데 선택된 총이 SMG라면 Shot 호출
+        if (Input.GetMouseButton(0) && gunManager.gunNum == 3)
         {
-            bulletCount = 6;
+
+            gunManager.Shot(playerCamera.transform.position, playerCamera.transform.forward.normalized);
+
         }
+
     }
 
     private void OnCollisionEnter(Collision collision)
@@ -242,6 +221,7 @@ public class PlayerController : MonoBehaviour
             Debug.Log("맞음");
         }
     }
+
 
     IEnumerator FadeInOut()
     {

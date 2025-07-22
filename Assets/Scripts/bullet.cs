@@ -26,7 +26,7 @@ public class Bullet : MonoBehaviour
         // active 상태일때만
         if (active)
         {
-            if (Vector3.Distance(startPosition, transform.position) > 30f)
+            if (Vector3.Distance(startPosition, transform.position) > 50f)
             {
                 Debug.Log("삭제");
                 active = false;
@@ -37,7 +37,11 @@ public class Bullet : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        gameObject.SetActive(false);
+        //같은 총알과 부딫힌게 아니라면 삭제
+        if (!collision.gameObject.CompareTag("bullet"))
+        {
+            gameObject.SetActive(false);
+        }
     }
 
 }
